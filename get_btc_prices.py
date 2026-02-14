@@ -74,6 +74,34 @@ def get_todays_comp(dates_n_prices, last_price) -> dict:
     full_json = dates_n_prices.copy()
     return full_json
 
+def order_values(dates_n_prices, value_2_pick):
+    ordered_values = []
+
+    for date, content in dates_n_prices.items():
+        curr_val = content[value_2_pick]
+
+        ordered_values.append(curr_val)
+
+    return ordered_values
+
+def plot_data(dates, dates_n_prices):
+
+    x = dates
+    y = []
+
+    purchase_value_arr = order_values(dates_n_prices=dates_n_prices, value_2_pick="purchase_value")
+    current_value_arr = order_values(dates_n_prices=dates_n_prices, value_2_pick="current_value")
+
+    # 
+    plt.plot(dates, purchase_value_arr, marker='o')
+    plt.title('Purchase History')
+    plt.xlabel('Dates')
+    plt.ylabel('Amt')
+    plt.show()
+
+
+    return
+
 
 def main():
     btc_ticker = Ticker("BTC-EUR")
@@ -110,6 +138,8 @@ def main():
 
     up_to_date = get_todays_comp(dates_n_prices=dates_n_prices, last_price=last_price)
     print(f"Overall findings: \n{json.dumps(up_to_date, indent=4)}")
+
+    plot_data(dates_to_check, dates_n_prices)
     
     return
 
