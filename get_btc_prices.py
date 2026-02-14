@@ -1,8 +1,10 @@
 import json
 from yfinance import Ticker
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+import numpy as np
 
-def get_purchase_data(purchase_data_path):
+def get_purchase_data(purchase_data_path) -> dict:
     json_data = {}
 
     with open(purchase_data_path) as json_file:
@@ -11,22 +13,29 @@ def get_purchase_data(purchase_data_path):
     return json_data
 
 
-def get_price_on_dates(btc_ticker, dates_to_check, purchase_data):
+def get_price_on_dates(btc_ticker, dates_to_check, purchase_data) -> dict:
+    start = dates_to_check[0]
+    end = next_day(dates_to_check[-1])
 
-    for x in dates_to_check:
-        day_4_ticker = btc_ticker.history(start=x, end=next_day(x), interval="1d")
-        if day_4_ticker.empty:
-            print(f"Found nothing for: {x}")
+    all_hits = btc_ticker.history(start=start, end=end, interval="1d")
+    if all_hits.empty:
+        raise RuntimeError("No historical data returned from yfinance.")
+    
+    hist_by_day = {}
+    for ts, row in all_hits.iterrows():
+        hist_by_day[ts.strftime("%Y-%m-%d")] = float(row["Close"])
+
+    #print(f"All hits by day: {json.dumps(hist_by_day, indent=4)}")
+    for d in dates_to_check:
+        close = hist_by_day.get(d)
+        if close is None:
+            print(f"Missing close for {d} (Yahoo gap).")
             continue
 
-        #print(f"Price for '{x}'\n{day_4_ticker}\n")
+        purchase_data[d]["close_price"] = close
 
-        close_price = float(day_4_ticker["Close"].iloc[0])
-        #print(f"Close price: {close_price}")
+    #print(f"My dates hits: {json.dumps(purchase_data, indent=4)}")
 
-        if x in purchase_data:
-            purchase_data[x]["close_price"] = close_price
-     
     return purchase_data
 
 
@@ -35,22 +44,14 @@ def next_day(date_str: str) -> str:
     return (d + timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-def get_fast_info(btc_ticker, keys_to_ret):
-     
-    fast_info = btc_ticker.get_fast_info()
-    last_price = fast_info['lastPrice']
-
-    #print(f"BTC Info: {json.dumps(, indent=4)}")
-    #print(f"Fast info: {fast_info}")
-    # for key in keys_to_ret:
-    #     if key in fast_info:
-    #         current_element = fast_info[key]
-    #         print(f"For key '{key}':\n{current_element}\n---------------")
-
-    return last_price
+def get_today_price_from_history(btc_ticker) -> float:
+    recent = btc_ticker.history(period="5d", interval="1d")
+    if recent.empty:
+        raise RuntimeError("No recent data for today's price.")
+    return float(recent["Close"].iloc[-1])
 
 
-def get_todays_comp(dates_n_prices, last_price):
+def get_todays_comp(dates_n_prices, last_price) -> dict:
     """
     Purchase value - P_val      -     Bought at close price - C_price
     Current value -  T_val      -     Today's Price - T_price
@@ -66,7 +67,7 @@ def get_todays_comp(dates_n_prices, last_price):
 
         T_val = (P_val * T_price) / C_price
 
-        print(f"For date: {date}\n  - close_price: {C_price}  -  purchase_value: {P_val}\n  - last_price: '{T_price}'  -  current_value: {T_val}\n")
+        #print(f"For date: {date}\n  - close_price: {C_price}  -  purchase_value: {P_val}\n  - last_price: '{T_price}'  -  current_value: {T_val}\n")
 
         dates_n_prices[date]["current_value"] = T_val
 
@@ -76,11 +77,13 @@ def get_todays_comp(dates_n_prices, last_price):
 
 def main():
     btc_ticker = Ticker("BTC-EUR")
-    keys_to_ret = ['currency', 'dayHigh', 'dayLow', 'exchange', 'fiftyDayAverage', 
-                   'lastPrice', 'lastVolume', 'marketCap', 'open', 'previousClose', 
-                   'quoteType', 'regularMarketPreviousClose', 'shares', 'tenDayAverageVolume', 
-                   'threeMonthAverageVolume', 'timezone', 'twoHundredDayAverage', 'yearChange', 
-                   'yearHigh', 'yearLow']
+    # Fields returned by each check
+    keys_to_ret = ['currency', 'dayHigh', 'dayLow', 'exchange', 
+                   'fiftyDayAverage', 'lastPrice', 'lastVolume', 
+                   'marketCap', 'open', 'previousClose', 'quoteType', 
+                   'regularMarketPreviousClose', 'shares', 'tenDayAverageVolume', 
+                   'threeMonthAverageVolume', 'timezone', 'twoHundredDayAverage', 
+                   'yearChange', 'yearHigh', 'yearLow']
     
     """
     # Open up the json file with the purchase info
@@ -99,12 +102,11 @@ def main():
 
     purchase_data = get_purchase_data(purchase_data_path=purchase_data_path)
 
-    dates_to_check = purchase_data.keys()
+    dates_to_check = sorted(purchase_data.keys())
     dates_n_prices = get_price_on_dates(btc_ticker=btc_ticker, dates_to_check=dates_to_check, purchase_data=purchase_data)
 
-
     # Now get the current price:
-    last_price = get_fast_info(btc_ticker=btc_ticker, keys_to_ret=keys_to_ret)
+    last_price = get_today_price_from_history(btc_ticker=btc_ticker)
 
     up_to_date = get_todays_comp(dates_n_prices=dates_n_prices, last_price=last_price)
     print(f"Overall findings: \n{json.dumps(up_to_date, indent=4)}")
