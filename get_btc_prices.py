@@ -4,6 +4,11 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 
+PURCHASE_VAL = "purchase_value"
+CURR_VAL = "current_value"
+BTC_QTY = "btc_quantity"
+CLOSE_PRICE = "close_price"
+
 def get_purchase_data(purchase_data_path) -> dict:
     json_data = {}
 
@@ -32,7 +37,7 @@ def get_price_on_dates(btc_ticker, dates_to_check, purchase_data) -> dict:
             print(f"Missing close for {d} (Yahoo gap).")
             continue
 
-        purchase_data[d]["close_price"] = close
+        purchase_data[d][CLOSE_PRICE] = close
 
     #print(f"My dates hits: {json.dumps(purchase_data, indent=4)}")
 
@@ -62,41 +67,97 @@ def get_todays_comp(dates_n_prices, last_price) -> dict:
     
     T_price = last_price
     for date, content in dates_n_prices.items():
-        P_val = float(content["purchase_value"])
-        C_price = content["close_price"]
+        P_val = float(content[PURCHASE_VAL])
+        C_price = content[CLOSE_PRICE]
 
         T_val = (P_val * T_price) / C_price
 
-        #print(f"For date: {date}\n  - close_price: {C_price}  -  purchase_value: {P_val}\n  - last_price: '{T_price}'  -  current_value: {T_val}\n")
+        #print(f"For date: {date}\n  - {CLOSE_PRICE}: {C_price}  -  {PURCHASE_VAL}: {P_val}\n  - last_price: '{T_price}'  -  {CURR_VAL}: {T_val}\n")
 
-        dates_n_prices[date]["current_value"] = T_val
+        dates_n_prices[date][CURR_VAL] = T_val
 
     full_json = dates_n_prices.copy()
+    print(f"Full content: \n{json.dumps(full_json, indent=4)}")
     return full_json
 
-def order_values(dates_n_prices, value_2_pick):
-    ordered_values = []
+def order_values(dates_n_prices):
+    purchase_pts_at_og_price = []
+    purchase_pts_now = []
+    acc_purchase_at_og_price = [] 
+    acc_purchase_now = []
 
     for date, content in dates_n_prices.items():
-        curr_val = content[value_2_pick]
+        purchase_price = content[PURCHASE_VAL]
+        current_price = content[CURR_VAL]
 
-        ordered_values.append(curr_val)
+        purchase_pts_at_og_price.append(purchase_price)
+        purchase_pts_now.append(current_price)
 
-    return ordered_values
+        # Do the build-up on the values at purchase price
+        if len(acc_purchase_at_og_price) > 0:
+            last_acc_purch_val_added = acc_purchase_at_og_price[-1]
+            new_acc_purch_value = last_acc_purch_val_added + purchase_price
+        else: 
+            new_acc_purch_value = purchase_price
+        acc_purchase_at_og_price.append(new_acc_purch_value)
+
+        # Do the build-up on the values at purchase price
+        if len(acc_purchase_now) > 0:
+            last_acc_purch_now_added = acc_purchase_now[-1]
+            new_acc_purch_now_value = last_acc_purch_now_added + current_price
+        else: 
+            new_acc_purch_now_value = current_price
+        acc_purchase_now.append(new_acc_purch_now_value)
+
+    set_of_ordered_values = {
+        "purchase_pts_at_og_price": purchase_pts_at_og_price,
+        "purchase_pts_now": purchase_pts_now,
+        "acc_purchase_at_og_price": acc_purchase_at_og_price,
+        "acc_purchase_now": acc_purchase_now
+    }
+
+    return set_of_ordered_values
 
 def plot_data(dates, dates_n_prices):
 
     x = dates
     y = []
 
-    purchase_value_arr = order_values(dates_n_prices=dates_n_prices, value_2_pick="purchase_value")
-    current_value_arr = order_values(dates_n_prices=dates_n_prices, value_2_pick="current_value")
+    purchases = order_values(dates_n_prices=dates_n_prices)
+    
+    og_points = purchases["purchase_pts_at_og_price"]
+    curr_points = purchases["purchase_pts_now"]
 
-    # 
-    plt.plot(dates, purchase_value_arr, marker='o')
+    line_og_price = purchases["acc_purchase_at_og_price"] 
+    line_curr_price = purchases["acc_purchase_now"]
+
+    # Plot the lines
+    plt.plot(dates, line_og_price, marker='o', label = "OG @ Purch $")
+    plt.plot(dates, line_curr_price, marker='o', label = "Curr @ Purch $")
+
+    # Plot individual purchase points as scatter plots for clarity
+    plt.scatter(dates, og_points, color='blue', label="Purchase Points (OG $)")
+    plt.scatter(dates, curr_points, color='orange', label="Purchase Points (Current $)")
+
+    # --- ADD LABELS ABOVE POINTS ---
+    for x, y in zip(dates, og_points):
+        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,8), ha='center')
+
+    for x, y in zip(dates, curr_points):
+        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,-12), ha='center')
+
+    # Make points also for the last entry in the line
+    last_line_og_value = line_og_price[-1]
+    last_line_curr_value = line_curr_price[-1]
+
+    plt.annotate(f"{last_line_og_value}", (dates[-1], last_line_og_value), textcoords="offset points", xytext=(0,8), ha='center')
+    plt.annotate(f"{last_line_curr_value}", (dates[-1], last_line_curr_value), textcoords="offset points", xytext=(0,-12), ha='center')
+
     plt.title('Purchase History')
     plt.xlabel('Dates')
     plt.ylabel('Amt')
+    plt.legend()
+    plt.grid()
     plt.show()
 
 
