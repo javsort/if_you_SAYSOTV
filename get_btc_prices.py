@@ -4,10 +4,20 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Input stuff
 PURCHASE_VAL = "purchase_value"
 CURR_VAL = "current_value"
 BTC_QTY = "btc_quantity"
 CLOSE_PRICE = "close_price"
+
+# Yfinance stuff
+BTC_TICKER_NAME = "BTC-EUR"
+KEYS_TO_RET = ['currency', 'dayHigh', 'dayLow', 'exchange', 
+               'fiftyDayAverage', 'lastPrice', 'lastVolume', 
+               'marketCap', 'open', 'previousClose', 'quoteType', 
+               'regularMarketPreviousClose', 'shares', 'tenDayAverageVolume', 
+               'threeMonthAverageVolume', 'timezone', 'twoHundredDayAverage', 
+               'yearChange', 'yearHigh', 'yearLow']
 
 def get_purchase_data(purchase_data_path) -> dict:
     json_data = {}
@@ -165,14 +175,8 @@ def plot_data(dates, dates_n_prices):
 
 
 def main():
-    btc_ticker = Ticker("BTC-EUR")
+    btc_ticker = Ticker(BTC_TICKER_NAME)
     # Fields returned by each check
-    keys_to_ret = ['currency', 'dayHigh', 'dayLow', 'exchange', 
-                   'fiftyDayAverage', 'lastPrice', 'lastVolume', 
-                   'marketCap', 'open', 'previousClose', 'quoteType', 
-                   'regularMarketPreviousClose', 'shares', 'tenDayAverageVolume', 
-                   'threeMonthAverageVolume', 'timezone', 'twoHundredDayAverage', 
-                   'yearChange', 'yearHigh', 'yearLow']
     
     """
     # Open up the json file with the purchase info
