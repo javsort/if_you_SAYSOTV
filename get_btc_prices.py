@@ -12,12 +12,13 @@ CLOSE_PRICE = "close_price"
 
 # Yfinance stuff
 BTC_TICKER_NAME = "BTC-EUR"
-KEYS_TO_RET = ['currency', 'dayHigh', 'dayLow', 'exchange', 
-               'fiftyDayAverage', 'lastPrice', 'lastVolume', 
-               'marketCap', 'open', 'previousClose', 'quoteType', 
-               'regularMarketPreviousClose', 'shares', 'tenDayAverageVolume', 
-               'threeMonthAverageVolume', 'timezone', 'twoHundredDayAverage', 
-               'yearChange', 'yearHigh', 'yearLow']
+KEYS_TO_RET = [
+    'currency', 'dayHigh', 'dayLow', 'exchange', 'fiftyDayAverage', 
+    'lastPrice', 'lastVolume', 'marketCap', 'open', 'previousClose', 
+    'quoteType', 'regularMarketPreviousClose', 'shares', 'tenDayAverageVolume', 
+    'threeMonthAverageVolume', 'timezone', 'twoHundredDayAverage', 
+    'yearChange', 'yearHigh', 'yearLow'
+    ]
 
 def get_purchase_data(purchase_data_path) -> dict:
     json_data = {}
@@ -50,7 +51,6 @@ def get_price_on_dates(btc_ticker, dates_to_check, purchase_data) -> dict:
         purchase_data[d][CLOSE_PRICE] = close
 
     #print(f"My dates hits: {json.dumps(purchase_data, indent=4)}")
-
     return purchase_data
 
 
@@ -129,7 +129,6 @@ def order_values(dates_n_prices):
     return set_of_ordered_values
 
 def plot_data(dates, dates_n_prices):
-
     x = dates
     y = []
 
