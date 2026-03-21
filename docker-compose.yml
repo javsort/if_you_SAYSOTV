@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/var/lib/grafana
+    restart: unless-stopped
+
+  python-job:
+    build: ./python
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
