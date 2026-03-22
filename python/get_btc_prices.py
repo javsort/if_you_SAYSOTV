@@ -3,8 +3,8 @@ import os
 import psycopg2
 from yfinance import Ticker
 from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import numpy as np
+# import matplotlib.pyplot as plt
+# import numpy as np
 
 # Input stuff
 DATE = "date"
@@ -50,13 +50,13 @@ def upload_to_db(purchases):
     """
 
     values = [
-        {
+        (
             row[DATE],
             float(row[PURCHASE_VAL]),
             float(row[CURR_VAL]),
             float(row[BTC_QTY]),
             float(row[CLOSE_PRICE])
-        }
+        )
         for row in purchases
     ]
 
@@ -197,49 +197,49 @@ def order_values(dates_n_prices):
 
     return set_of_ordered_values
 
-def plot_data(dates, dates_n_prices):
-    x = dates
-    y = []
-
-    purchases = order_values(dates_n_prices=dates_n_prices)
-    
-    og_points = purchases["purchase_pts_at_og_price"]
-    curr_points = purchases["purchase_pts_now"]
-
-    line_og_price = purchases["acc_purchase_at_og_price"] 
-    line_curr_price = purchases["acc_purchase_now"]
-
-    # Plot the lines
-    plt.plot(dates, line_og_price, marker='o', label = "OG @ Purch $")
-    plt.plot(dates, line_curr_price, marker='o', label = "Curr @ Purch $")
-
-    # Plot individual purchase points as scatter plots for clarity
-    plt.scatter(dates, og_points, color='blue', label="Purchase Points (OG $)")
-    plt.scatter(dates, curr_points, color='orange', label="Purchase Points (Current $)")
-
-    # --- ADD LABELS ABOVE POINTS ---
-    for x, y in zip(dates, og_points):
-        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,8), ha='center')
-
-    for x, y in zip(dates, curr_points):
-        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,-12), ha='center')
-
-    # Make points also for the last entry in the line
-    last_line_og_value = line_og_price[-1]
-    last_line_curr_value = line_curr_price[-1]
-
-    plt.annotate(f"{last_line_og_value}", (dates[-1], last_line_og_value), textcoords="offset points", xytext=(0,8), ha='center')
-    plt.annotate(f"{last_line_curr_value}", (dates[-1], last_line_curr_value), textcoords="offset points", xytext=(0,-12), ha='center')
-
-    plt.title('Purchase History')
-    plt.xlabel('Dates')
-    plt.ylabel('Amt')
-    plt.legend()
-    plt.grid()
-    plt.show()
-
-
-    return
+#def plot_data(dates, dates_n_prices):
+#    x = dates
+#    y = []
+#
+#    purchases = order_values(dates_n_prices=dates_n_prices)
+#    
+#    og_points = purchases["purchase_pts_at_og_price"]
+#    curr_points = purchases["purchase_pts_now"]
+#
+#    line_og_price = purchases["acc_purchase_at_og_price"] 
+#    line_curr_price = purchases["acc_purchase_now"]
+#
+#    # Plot the lines
+#    plt.plot(dates, line_og_price, marker='o', label = "OG @ Purch $")
+#    plt.plot(dates, line_curr_price, marker='o', label = "Curr @ Purch $")
+#
+#    # Plot individual purchase points as scatter plots for clarity
+#    plt.scatter(dates, og_points, color='blue', label="Purchase Points (OG $)")
+#    plt.scatter(dates, curr_points, color='orange', label="Purchase Points (Current $)")
+#
+#    # --- ADD LABELS ABOVE POINTS ---
+#    for x, y in zip(dates, og_points):
+#        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,8), ha='center')
+#
+#    for x, y in zip(dates, curr_points):
+#        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,-12), ha='center')
+#
+#    # Make points also for the last entry in the line
+#    last_line_og_value = line_og_price[-1]
+#    last_line_curr_value = line_curr_price[-1]
+#
+#    plt.annotate(f"{last_line_og_value}", (dates[-1], last_line_og_value), textcoords="offset points", xytext=(0,8), ha='center')
+#    plt.annotate(f"{last_line_curr_value}", (dates[-1], last_line_curr_value), textcoords="offset points", xytext=(0,-12), ha='center')
+#
+#    plt.title('Purchase History')
+#    plt.xlabel('Dates')
+#    plt.ylabel('Amt')
+#    plt.legend()
+#    plt.grid()
+#    plt.show()
+#
+#
+#    return
 
 
 def main():
@@ -262,7 +262,7 @@ def main():
     """
 
 
-    purchase_data_path = "../data/purchase_data.json"
+    purchase_data_path = "./data/purchase_data.json"
 
     purchase_data = get_purchase_data(purchase_data_path=purchase_data_path)
 
@@ -276,9 +276,8 @@ def main():
     print(f"Overall findings: \n{json.dumps(up_to_date_data, indent=4)}")
 
     
-    plot_data(dates_to_check, dates_n_prices)
+    # plot_data(dates_to_check, dates_n_prices)
 
-    exit()
     print(f"Attempting data upload to DB: \n")
     try:
         purchase_rows = purchase_data['purchases']
