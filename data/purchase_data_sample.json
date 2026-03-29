@@ -1,0 +1,11 @@
+{
+    "purchases": [
+        {
+            "date": "2024-08-16",
+            "purchase_value": 200,
+            "current_value": 0,
+            "btc_quantity": 0.00199245854,
+            "close_price": 0
+        }
+    ]
+}

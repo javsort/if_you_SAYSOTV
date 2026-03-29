@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: sayso-db
+    environment:
+      POSTGRES_USER: sayso_user
+      POSTGRES_PASSWORD: sayso_pass
+      POSTGRES_DB: sayso_db
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  python-job:
+    build: 
+      context: .
+      dockerfile: ./python/Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_NAME: sayso_db
+      DB_USER: sayso_user
+      DB_PASSWORD: sayso_pass
+    restart: no
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
