@@ -3,15 +3,14 @@ import os
 import psycopg2
 from yfinance import Ticker
 from datetime import datetime, timedelta
-# import matplotlib.pyplot as plt
-# import numpy as np
 
 # Input stuff
-DATE = "date"
+DATE = "date"   
 PURCHASE_VAL = "purchase_value"
 CURR_VAL = "current_value"
 BTC_QTY = "btc_quantity"
 CLOSE_PRICE = "close_price"
+BTC_VAL = "btc_val"
 
 # DB STUFF
 DB_HOST = os.getenv("DB_HOST")
@@ -37,7 +36,7 @@ def get_connection():
         password=DB_PASSWORD
     )
 
-def upload_to_db(purchases):
+def upload_purchases_db(purchases):
     sql = """
         INSERT INTO sayso_purchases (
             date,
@@ -47,6 +46,9 @@ def upload_to_db(purchases):
             close_price
         )
         VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (date) DO UPDATE SET
+            current_value = EXCLUDED.current_value,
+            close_price = EXCLUDED.close_price
     """
 
     values = [
@@ -63,9 +65,31 @@ def upload_to_db(purchases):
     with get_connection() as db_conn:
         with db_conn.cursor() as db_cur:
             db_cur.executemany(sql, values)
-
             db_conn.commit()
-            db_conn.close()
+
+def upload_hist_data_db(hist_by_day):
+    sql = """
+        INSERT INTO sayso_btc_eur_price_hist (
+            date,
+            btc_value
+        )
+        VALUES (%s, %s)
+        ON CONFLICT (date) DO UPDATE SET
+            btc_value = EXCLUDED.btc_value
+    """
+
+    values = [
+        (
+            date,
+            float(btc_value)
+        )
+        for date, btc_value in hist_by_day.items()
+    ]
+
+    with get_connection() as db_conn:
+        with db_conn.cursor() as db_cur:
+            db_cur.executemany(sql, values)
+            db_conn.commit()
 
 
 def get_purchase_data(purchase_data_path) -> dict:
@@ -90,7 +114,7 @@ def get_dates(purchase_data):
 
 def get_price_on_dates(btc_ticker, dates_to_check, purchase_data) -> dict:
     start = dates_to_check[0]
-    end = next_day(dates_to_check[-1])
+    end = datetime.now().strftime("%Y-%m-%d")
 
     #print(f"Purchase data: {json.dumps(purchase_data, indent=4)}")
 
@@ -113,7 +137,7 @@ def get_price_on_dates(btc_ticker, dates_to_check, purchase_data) -> dict:
         purchase_data = insert_close_price_into_purchase_data(purchase_data, d, close)
 
     #print(f"My dates hits: {json.dumps(purchase_data, indent=4)}")
-    return purchase_data
+    return purchase_data, hist_by_day
 
 def insert_close_price_into_purchase_data(purchase_data, date, close_price):
     for purchase in purchase_data['purchases']:
@@ -197,51 +221,6 @@ def order_values(dates_n_prices):
 
     return set_of_ordered_values
 
-#def plot_data(dates, dates_n_prices):
-#    x = dates
-#    y = []
-#
-#    purchases = order_values(dates_n_prices=dates_n_prices)
-#    
-#    og_points = purchases["purchase_pts_at_og_price"]
-#    curr_points = purchases["purchase_pts_now"]
-#
-#    line_og_price = purchases["acc_purchase_at_og_price"] 
-#    line_curr_price = purchases["acc_purchase_now"]
-#
-#    # Plot the lines
-#    plt.plot(dates, line_og_price, marker='o', label = "OG @ Purch $")
-#    plt.plot(dates, line_curr_price, marker='o', label = "Curr @ Purch $")
-#
-#    # Plot individual purchase points as scatter plots for clarity
-#    plt.scatter(dates, og_points, color='blue', label="Purchase Points (OG $)")
-#    plt.scatter(dates, curr_points, color='orange', label="Purchase Points (Current $)")
-#
-#    # --- ADD LABELS ABOVE POINTS ---
-#    for x, y in zip(dates, og_points):
-#        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,8), ha='center')
-#
-#    for x, y in zip(dates, curr_points):
-#        plt.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0,-12), ha='center')
-#
-#    # Make points also for the last entry in the line
-#    last_line_og_value = line_og_price[-1]
-#    last_line_curr_value = line_curr_price[-1]
-#
-#    plt.annotate(f"{last_line_og_value}", (dates[-1], last_line_og_value), textcoords="offset points", xytext=(0,8), ha='center')
-#    plt.annotate(f"{last_line_curr_value}", (dates[-1], last_line_curr_value), textcoords="offset points", xytext=(0,-12), ha='center')
-#
-#    plt.title('Purchase History')
-#    plt.xlabel('Dates')
-#    plt.ylabel('Amt')
-#    plt.legend()
-#    plt.grid()
-#    plt.show()
-#
-#
-#    return
-
-
 def main():
     btc_ticker = Ticker(BTC_TICKER_NAME)
     # Fields returned by each check
@@ -267,7 +246,7 @@ def main():
     purchase_data = get_purchase_data(purchase_data_path=purchase_data_path)
 
     dates_to_check = get_dates(purchase_data)
-    dates_n_prices = get_price_on_dates(btc_ticker=btc_ticker, dates_to_check=dates_to_check, purchase_data=purchase_data)
+    dates_n_prices, hist_by_day = get_price_on_dates(btc_ticker=btc_ticker, dates_to_check=dates_to_check, purchase_data=purchase_data)
 
     # Now get the current price:
     last_price = get_today_price_from_history(btc_ticker=btc_ticker)
@@ -281,7 +260,13 @@ def main():
     print(f"Attempting data upload to DB: \n")
     try:
         purchase_rows = purchase_data['purchases']
-        upload_to_db(purchase_rows)
+
+        print("Uploading purchases...")
+        upload_purchases_db(purchase_rows)
+
+        
+        print(f"Uploading {BTC_TICKER_NAME} history...")
+        upload_hist_data_db(hist_by_day)
     except Exception as e:
         print(f"Ran into an issue when uploading to DB... Error message: \n'{e}'")
         exit()
@@ -289,7 +274,7 @@ def main():
     print(f"Uploaded data successfully. Thanks for running!")
 
     
-    return
+    exit()
 
 if __name__ == "__main__":
         main()

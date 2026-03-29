@@ -22,10 +22,13 @@ services:
       DB_NAME: sayso_db
       DB_USER: sayso_user
       DB_PASSWORD: sayso_pass
-    restart: unless-stopped
+    restart: no
 
   grafana:
     image: grafana/grafana:latest
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
     ports:
       - "3000:3000"
     depends_on:

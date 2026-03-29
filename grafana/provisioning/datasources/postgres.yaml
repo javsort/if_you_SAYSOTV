@@ -1,0 +1,18 @@
+apiVersion: 1
+
+datasources:
+  - name: SAYSO Postgres
+    uid: sayso-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: sayso_user
+    secureJsonData:
+      password: sayso_pass
+    jsonData:
+      database: sayso_db
+      sslmode: disable
+      postgresVersion: 1500
+      timescaledb: false
+    isDefault: true
+    editable: true
